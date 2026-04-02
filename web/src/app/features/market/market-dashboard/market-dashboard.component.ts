@@ -1,20 +1,53 @@
-import { Component } from "@angular/core";
+import { Component, OnInit, ChangeDetectorRef } from "@angular/core";
+import { CommonModule, DecimalPipe } from "@angular/common";
+import { FormsModule } from "@angular/forms";
+import { firstValueFrom } from "rxjs";
+import { MarketDataService, MarketItem } from "../market-data.service";
+import { RS3_ITEMS, RS3Item } from "../item-database";
 
 @Component({
   selector: "app-market-dashboard",
   standalone: true,
+  imports: [CommonModule, DecimalPipe, FormsModule],
   template: `
     <section class="market-shell">
       <h2>Market Dashboard</h2>
       <p>Welcome to the Bazaar of Newscape.</p>
-      <div class="cards">
-        <article class="card">
-          <h3>Grand Exchange Prices</h3>
-          <p>Track trending items like Rune scimitar, Dragon darts, and Mystic robes.</p>
-        </article>
-        <article class="card">
-          <h3>Supply & Demand</h3>
-          <p>City supply data with medieval-inspired UI components.</p>
+
+      <div class="controls">
+        <button class="refresh" (click)="refresh()" [disabled]="loading">Refresh data</button>
+        
+        <div class="search-box">
+          <div class="search-input-wrapper">
+            <input 
+              type="text" 
+              [(ngModel)]="searchItemId" 
+              (input)="onSearchInput()"
+              (keyup.enter)="searchItem()"
+              placeholder="Search by name or ID..."
+              [disabled]="loading"
+            />
+            <ul class="suggestions" *ngIf="showSuggestions && suggestions.length">
+              <li *ngFor="let suggestion of suggestions" (click)="selectSuggestion(suggestion)" class="suggestion-item">
+                <span class="suggestion-name">{{ suggestion.name }}</span>
+                <span class="suggestion-id">#{{ suggestion.id }}</span>
+              </li>
+            </ul>
+          </div>
+          <button class="search-btn" (click)="searchItem()" [disabled]="loading">Search</button>
+        </div>
+      </div>
+
+      <p *ngIf="loading" class="status">Loading...</p>
+      <p *ngIf="error" class="status error">Error: {{ error }}</p>
+
+      <div class="cards" *ngIf="!loading && items.length">
+        <article class="card" *ngFor="let item of items">
+          <h3>{{ item.name }}</h3>
+          <p>Current value: {{ item.currentPrice | number }}</p>
+          <p>Daily change: {{ item.dailyChange | number }}</p>
+          <p>Buy qty: {{ item.buyQuantity }}</p>
+          <p>Sell qty: {{ item.sellQuantity }}</p>
         </article>
       </div>
     </section>
@@ -42,33 +75,232 @@ import { Component } from "@angular/core";
         color: #d8c29b;
       }
 
-      .cards {
-        display: grid;
+      .refresh {
+        margin-bottom: 1rem;
+        background: #382f66;
+        border: 1px solid #8e7fce;
+        color: #f2e6c3;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+      }
+
+      .controls {
+        display: flex;
         gap: 1rem;
-        grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+        margin-bottom: 1.5rem;
+        align-items: center;
+        flex-wrap: wrap;
       }
 
-      .card {
+      .search-box {
+        display: flex;
+        gap: 0.5rem;
+      }
+
+      .search-input-wrapper {
+        position: relative;
+        flex: 1;
+      }
+
+      .search-box input {
         background: rgba(10, 12, 20, 0.7);
-        border: 1px solid rgba(255, 255, 255, 0.1);
-        border-radius: 0.75rem;
-        padding: 1rem;
-        backdrop-filter: blur(5px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #f2e6c3;
+        padding: 0.5rem 0.75rem;
+        border-radius: 0.5rem;
+        font-size: 0.9rem;
+        width: 100%;
+        min-width: 150px;
       }
 
-      .card h3 {
-        margin-top: 0;
-        font-size: 1.2rem;
-        font-family: "Cinzel", serif;
-        text-shadow: 0 0 4px rgba(240, 220, 175, 0.5);
+      .search-box input::placeholder {
+        color: #8e7fce;
       }
 
-      .card p {
-        margin: 0.5rem 0 0;
+      .search-box input:focus {
+        outline: none;
+        border-color: #8e7fce;
+        box-shadow: 0 0 8px rgba(142, 127, 206, 0.3);
+      }
+
+      .suggestions {
+        position: absolute;
+        top: 100%;
+        left: 0;
+        right: 0;
+        background: rgba(10, 12, 20, 0.95);
+        border: 1px solid rgba(142, 127, 206, 0.5);
+        border-top: none;
+        border-radius: 0 0 0.5rem 0.5rem;
+        list-style: none;
+        margin: 0;
+        padding: 0.25rem 0;
+        max-height: 200px;
+        overflow-y: auto;
+        z-index: 1000;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      }
+
+      .suggestion-item {
+        padding: 0.5rem 0.75rem;
         color: #d8c29b;
-        line-height: 1.4;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 1rem;
       }
+
+      .suggestion-item:hover {
+        background: rgba(142, 127, 206, 0.2);
+        color: #f2e6c3;
+      }
+
+      .suggestion-name {
+        flex: 1;
+      }
+
+      .suggestion-id {
+        font-size: 0.8em;
+        color: #8e7fce;
+        white-space: nowrap;
+      }
+
+      .search-btn {
+        background: #8e7fce;
+        border: 1px solid #8e7fce;
+        color: #1a1620;
+        padding: 0.5rem 1rem;
+        border-radius: 0.5rem;
+        cursor: pointer;
+        font-weight: 600;
+      }
+
+      .search-btn:hover:not(:disabled) {
+        background: #a89fe0;
+      }
+
+      .refresh:disabled,
+      .search-btn:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+      }
+
+      .status { margin-bottom: 1rem; }
+      .status.error { color: #ff6d6d; }
+
+      .cards { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+      .card { background: rgba(10, 12, 20, 0.7); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 0.75rem; padding: 1rem; backdrop-filter: blur(5px); }
+      .card h3 { margin-top: 0; font-size: 1.2rem; font-family: "Cinzel", serif; text-shadow: 0 0 4px rgba(240, 220, 175, 0.5); }
+      .card p { margin: 0.45rem 0 0; color: #d8c29b; line-height: 1.4; }
     `
   ]
 })
-export class MarketDashboardComponent {}
+export class MarketDashboardComponent implements OnInit {
+  items: MarketItem[] = [];
+  loading = false;
+  error = '';
+  searchItemId = '';
+  suggestions: RS3Item[] = [];
+  showSuggestions = false;
+
+  private readonly defaultItemIds = [4151, 11840, 11286, 15241];
+
+  constructor(private marketData: MarketDataService, private cdr: ChangeDetectorRef) {}
+
+  ngOnInit() {
+    console.log('[Market] Component initialized, calling refresh()');
+    this.refresh();
+  }
+
+  refresh() {
+    console.log('[Market] Refresh called with IDs:', this.defaultItemIds);
+    this.error = '';
+    this.loading = true;
+
+    const calls = this.defaultItemIds.map((id) =>
+      firstValueFrom(this.marketData.getItem(id)).catch((err) => {
+        console.error('[Market] Item load failed for', id, ':', err);
+        return null;
+      })
+    );
+
+    Promise.all(calls).then((results) => {
+      console.log('[Market] All requests finished. Results:', results);
+      this.items = results.filter((it): it is MarketItem => !!it);
+      this.loading = false;
+      this.cdr.markForCheck();
+      console.log('[Market] Loaded', this.items.length, 'items');
+      if (this.items.length === 0) {
+        this.error = 'Could not load any market items.';
+      }
+    }).catch((err) => {
+      console.error('[Market] Promise.all error:', err);
+      this.loading = false;
+      this.error = 'Failed to load items: ' + err?.message;
+      this.cdr.markForCheck();
+    });
+  }
+
+  searchItem() {
+    const id = Number(this.searchItemId);
+    if (!id || id < 1) {
+      this.error = 'Please enter a valid item ID';
+      return;
+    }
+
+    console.log('[Market] Searching for item:', id);
+    this.error = '';
+    this.loading = true;
+    this.showSuggestions = false;
+
+    firstValueFrom(this.marketData.getItem(id))
+      .then((item) => {
+        console.log('[Market] Search result:', item);
+        this.items = [item];
+        this.loading = false;
+        this.cdr.markForCheck();
+      })
+      .catch((err) => {
+        console.error('[Market] Search failed for', id, ':', err);
+        this.items = [];
+        this.loading = false;
+        this.error = `Item ${id} not found`;
+        this.cdr.markForCheck();
+      });
+  }
+
+  onSearchInput() {
+    const input = this.searchItemId.trim().toLowerCase();
+    
+    if (!input) {
+      this.suggestions = [];
+      this.showSuggestions = false;
+      return;
+    }
+
+    // Filter items that match the input (by name or ID)
+    this.suggestions = RS3_ITEMS.filter(item => 
+      item.name.toLowerCase().startsWith(input) || 
+      item.id.toString().startsWith(input)
+    ).slice(0, 10); // Limit to 10 suggestions
+
+    this.showSuggestions = this.suggestions.length > 0;
+    this.cdr.markForCheck();
+  }
+
+  selectSuggestion(item: RS3Item) {
+    this.searchItemId = item.id.toString();
+    this.showSuggestions = false;
+    this.suggestions = [];
+    
+    // Trigger search
+    setTimeout(() => this.searchItem(), 0);
+  }
+
+  closeSuggestions() {
+    this.showSuggestions = false;
+  }
+}
+
