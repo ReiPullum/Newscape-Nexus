@@ -16,7 +16,7 @@ export interface MarketItem {
 @Injectable({ providedIn: 'root' })
 export class MarketDataService {
   // Backend API (full-stack): http://localhost:3000/api/market
-  // For MVP you can use direct RuneScape endpoint if CORS allows.
+  // Keep API URL in frontend environment config for production deployments.
   private baseUrl = 'http://localhost:3000/api/market';
 
   constructor(private http: HttpClient) {}

@@ -1,32 +1,125 @@
 # Newscape-Nexus
 
-## Full-stack architecture (for portfolio)
+Newscape-Nexus is a full-stack RuneScape GE tracker built with Angular + Express + MongoDB.
 
-- Angular frontend in `web/`
-- Express + MongoAPI backend in `backend/`
-- Runtime: Node.js for API, connecting to RuneScape GE and MongoDB Atlas
+Current state:
+- Public GE market dashboard 
+- Backend-managed data access 
+- Production ready foundation in place 
 
-### Run backend locally
+## Stack and Tools Used
 
-1. `cd backend`
-2. `cp .env.example .env` and set `MONGO_URI` + `MONGO_DB`
-3. `npm install`
-4. `npm run dev`
+Frontend:
+- Angular 21
+- TypeScript
+- RxJS
+- Angular Router and HttpClient
 
-### Run frontend locally
+Backend:
+- Node.js + Express
+- MongoDB Node Driver
+- Axios (RS3 API fetches)
+- Zod (request/env validation)
+- JWT + bcryptjs + cookie-parser (auth/admin login system implemented for potential future use (WIP))
+- Nodemailer (password reset for login system (WIP))
+- Helmet + CORS + express-rate-limit
 
-1. `cd web`
-2. `npm install`
-3. `npm run start` (or `ng serve --open --port 4200`)
+Dev/Quality Tooling:
+- Nodemon
+- Node test runner (`node --test`)
+- npm scripts
+- GitHub Actions CI
 
-### What it does
+## Architecture
 
-- `/api/market/:id` returns cached/normalized RS3 item data
-- `/api/market/batch` returns multiple items in one request
-- `MarketDataService` calls backend path and maps to `MarketItem`
+Application Flow:
 
-### Deployment path
+Frontend (browser) -> Backend API -> MongoDB + RS3 API -> Backend API -> Frontend
 
-- Frontend: Cloudflare Pages
-- Backend: Railway/Heroku/Cloudflare Workers (proxy) or Cloudflare Pages Functions
-- DB: MongoDB Atlas
+## Features Implemented
+
+Public GE tracker:
+- `GET /api/market/:id` for single-item normalized market data
+- `POST /api/market/batch` for batch market fetches
+- Backend caching layer for market responses
+- Self generated list of all items in Runescape3
+
+Backend auth and account management infrastructure(WIP):
+- JWT login/refresh/logout endpoints
+- Password reset request/confirm flow
+- Role-based admin endpoints for user lifecycle management
+- Account lockout and password history enforcement
+- Audit logging for auth/admin actions
+
+Operational and production-readiness features:
+- Strict environment validation with fail-fast production checks
+- Structured JSON logging
+- Health endpoints:
+	- `GET /health/live`
+	- `GET /health/ready`
+- CI pipeline for backend tests/audit and frontend build
+
+## Local Development
+
+Prerequisites:
+- Node.js 22+
+- npm
+- MongoDB Atlas URI (or local MongoDB)
+
+1. Install dependencies
+
+```powershell
+npm --prefix .\backend install
+npm --prefix .\web install
+```
+
+2. Configure backend environment
+
+- Copy `backend/.env.example` to `backend/.env`
+- Set at minimum:
+	- `MONGO_URI`
+	- `MONGO_DB`
+	- `JWT_ACCESS_SECRET`
+	- `JWT_REFRESH_SECRET`
+
+3. Start backend
+
+```powershell
+npm --prefix .\backend run dev
+```
+
+4. Start frontend
+
+```powershell
+npm --prefix .\web start
+```
+
+Default URLs:
+- Frontend: `http://localhost:4200`
+- Backend: `http://localhost:3000`
+
+## Useful Scripts
+
+Backend:
+- `npm --prefix .\backend run dev`
+- `npm --prefix .\backend run start`
+- `npm --prefix .\backend test`
+
+Frontend:
+- `npm --prefix .\web start`
+- `npm --prefix .\web run build`
+- `npm --prefix .\web test`
+
+## Verification Status
+
+Recently verified:
+- Frontend build passes
+- Backend tests pass
+- No frontend source exposure of Mongo credential patterns
+
+## Deployment Direction
+
+- Frontend: Cloudflare Pages / static hosting
+- Backend: Railway/Render/Fly/VM container
+- Database: MongoDB Atlas
+- Reverse proxy/TLS in front of backend for production traffic
