@@ -281,10 +281,30 @@ export class MarketDashboardComponent implements OnInit {
     }
 
     // Filter items that match the input (by name or ID)
-    this.suggestions = RS3_ITEMS.filter(item => 
-      item.name.toLowerCase().startsWith(input) || 
+    const matched = RS3_ITEMS.filter(item =>
+      item.name.toLowerCase().includes(input) ||
       item.id.toString().startsWith(input)
-    ).slice(0, 10); // Limit to 10 suggestions
+    );
+
+    // Sort: exact word match > starts-with > any word starts-with > contains anywhere
+    matched.sort((a, b) => {
+      const aName = a.name.toLowerCase();
+      const bName = b.name.toLowerCase();
+      const aWords = aName.split(/\s+/);
+      const bWords = bName.split(/\s+/);
+      const aExactWord = aWords.includes(input);
+      const bExactWord = bWords.includes(input);
+      if (aExactWord !== bExactWord) return aExactWord ? -1 : 1;
+      const aStarts = aName.startsWith(input);
+      const bStarts = bName.startsWith(input);
+      if (aStarts !== bStarts) return aStarts ? -1 : 1;
+      const aWordStarts = aWords.some(w => w.startsWith(input));
+      const bWordStarts = bWords.some(w => w.startsWith(input));
+      if (aWordStarts !== bWordStarts) return aWordStarts ? -1 : 1;
+      return aName.localeCompare(bName);
+    });
+
+    this.suggestions = matched.slice(0, 20); // Show more suggestions for broad terms
 
     this.showSuggestions = this.suggestions.length > 0;
     this.cdr.markForCheck();
