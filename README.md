@@ -20,8 +20,6 @@ Backend:
 - MongoDB Node Driver
 - Axios (RS3 API fetches)
 - Zod (request/env validation)
-- JWT + bcryptjs + cookie-parser (auth/admin login system implemented for potential future use (WIP))
-- Nodemailer (password reset for login system (WIP))
 - Helmet + CORS + express-rate-limit
 
 Dev/Quality Tooling:
@@ -43,13 +41,6 @@ Public GE tracker:
 - `POST /api/market/batch` for batch market fetches
 - Backend caching layer for market responses
 - Self generated list of all items in Runescape3
-
-Backend auth and account management infrastructure(WIP):
-- JWT login/refresh/logout endpoints
-- Password reset request/confirm flow
-- Role-based admin endpoints for user lifecycle management
-- Account lockout and password history enforcement
-- Audit logging for auth/admin actions
 
 Operational and production-readiness features:
 - Strict environment validation with fail-fast production checks
