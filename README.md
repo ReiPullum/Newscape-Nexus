@@ -1,6 +1,6 @@
 # Newscape-Nexus
 
-Newscape-Nexus is a full-stack RuneScape GE tracker built with Angular + Express + MongoDB.
+Newscape-Nexus is a full-stack RuneScape GE tracker built with Angular + Express + PostgreSQL.
 
 Current state:
 - Public GE market dashboard 
@@ -17,7 +17,7 @@ Frontend:
 
 Backend:
 - Node.js + Express
-- MongoDB Node Driver
+- PostgreSQL Node Driver
 - Axios (RS3 API fetches)
 - Zod (request/env validation)
 - Helmet + CORS + express-rate-limit
@@ -27,12 +27,6 @@ Dev/Quality Tooling:
 - Node test runner (`node --test`)
 - npm scripts
 - GitHub Actions CI
-
-## Architecture
-
-Application Flow:
-
-Frontend (browser) -> Backend API -> MongoDB + RS3 API -> Backend API -> Frontend
 
 ## Features Implemented
 
@@ -55,7 +49,7 @@ Operational and production-readiness features:
 Prerequisites:
 - Node.js 22+
 - npm
-- MongoDB Atlas URI (or local MongoDB)
+- PostgreSQL
 
 1. Install dependencies
 
@@ -112,5 +106,5 @@ Recently verified:
 
 - Frontend: Cloudflare Pages / static hosting
 - Backend: Railway/Render/Fly/VM container
-- Database: MongoDB Atlas
+- Database: PostgreSQL
 - Reverse proxy/TLS in front of backend for production traffic
