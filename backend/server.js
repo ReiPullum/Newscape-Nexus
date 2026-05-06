@@ -1,7 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const axios = require('axios');
-const { MongoClient } = require('mongodb');
+const { Pool } = require('pg');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { z } = require('zod');
@@ -88,45 +88,90 @@ const marketBatchBodySchema = z.object({
 
 app.use('/api', apiLimiter);
 
-const mongoUri = config.mongoUri;
-let mongoClient;
-let marketCollection;
+/** @type {Pool | null} */
+let pgPool = null;
+
+const CACHE_TTL_MS = 60_000; // 1 minute, same as the previous Mongo TTL
 
 app.get('/health/live', (_req, res) => {
   return res.json({ status: 'ok', service: 'newscape-nexus-backend', ts: new Date().toISOString() });
 });
 
 app.get('/health/ready', async (_req, res) => {
-  if (!mongoUri) {
-    return res.status(503).json({ status: 'degraded', checks: { mongo: 'missing-config' } });
+  if (!config.databaseUrl) {
+    return res.status(503).json({ status: 'degraded', checks: { postgres: 'missing-config' } });
   }
 
   try {
-    if (!mongoClient) {
-      throw new Error('mongo-client-not-initialized');
+    if (!pgPool) {
+      throw new Error('pg-pool-not-initialized');
     }
-    await mongoClient.db(config.mongoDb).command({ ping: 1 });
-    return res.json({ status: 'ok', checks: { mongo: 'ok' } });
+    await pgPool.query('SELECT 1');
+    return res.json({ status: 'ok', checks: { postgres: 'ok' } });
   } catch (err) {
     logger.error('readiness check failed', { error: err.message || String(err) });
-    return res.status(503).json({ status: 'degraded', checks: { mongo: 'unavailable' } });
+    return res.status(503).json({ status: 'degraded', checks: { postgres: 'unavailable' } });
   }
 });
 
 async function connectDb() {
-  if (!mongoUri) {
-    logger.warn('MONGO_URI is not configured, using inline cache only.');
+  if (!config.databaseUrl) {
+    logger.warn('DATABASE_URL is not configured, using in-process cache only.');
     return;
   }
 
-  mongoClient = new MongoClient(mongoUri, { useUnifiedTopology: true });
-  await mongoClient.connect();
-  const db = mongoClient.db(config.mongoDb);
-  marketCollection = db.collection('market_items');
+  pgPool = new Pool({
+    connectionString: config.databaseUrl,
+    ssl: config.isProduction ? { rejectUnauthorized: true } : false,
+    max: 10,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+  });
 
-  await marketCollection.createIndex({ id: 1 }, { unique: true });
+  // Verify connectivity on startup.
+  await pgPool.query('SELECT 1');
 
-  logger.info('connected to MongoDB', { database: config.mongoDb });
+  // Create the cache table if it doesn't exist yet.
+  await pgPool.query(`
+    CREATE TABLE IF NOT EXISTS market_items (
+      id         INTEGER PRIMARY KEY,
+      data       JSONB    NOT NULL,
+      updated_at BIGINT   NOT NULL
+    )
+  `);
+
+  logger.info('connected to PostgreSQL and market_items table is ready');
+}
+
+async function getCachedItem(itemId) {
+  if (!pgPool) return null;
+
+  const result = await pgPool.query(
+    'SELECT data, updated_at FROM market_items WHERE id = $1',
+    [itemId]
+  );
+
+  if (result.rows.length === 0) return null;
+
+  const { data, updated_at: updatedAt } = result.rows[0];
+  if (Date.now() - Number(updatedAt) < CACHE_TTL_MS) {
+    return data; // still fresh
+  }
+
+  return null; // stale — caller will re-fetch
+}
+
+async function setCachedItem(itemId, itemData) {
+  if (!pgPool) return;
+
+  await pgPool.query(
+    `INSERT INTO market_items (id, data, updated_at)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (id) DO UPDATE
+       SET data       = EXCLUDED.data,
+           updated_at = EXCLUDED.updated_at`,
+    [itemId, JSON.stringify(itemData), Date.now()]
+  );
 }
 
 async function fetchRs3Item(itemId) {
@@ -135,8 +180,9 @@ async function fetchRs3Item(itemId) {
   try {
     const res = await axios.get(url, {
       timeout: 10000,
+      maxRedirects: 5,
       headers: {
-        'User-Agent': 'Newscape-Nexus/1.0 (+https://github.com)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         Accept: 'application/json',
       },
     });
@@ -155,8 +201,9 @@ async function fetchRs3Graph(itemId) {
   try {
     const res = await axios.get(url, {
       timeout: 10000,
+      maxRedirects: 5,
       headers: {
-        'User-Agent': 'Newscape-Nexus/1.0 (+https://github.com)',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
         Accept: 'application/json',
       },
     });
@@ -174,8 +221,9 @@ async function fetchRs3TradeAmount(itemId) {
 
   const res = await axios.get(url, {
     timeout: 10000,
+    maxRedirects: 5,
     headers: {
-      'User-Agent': 'Newscape-Nexus/1.0 (+https://github.com)',
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
       Accept: 'text/html',
     },
   });
@@ -292,15 +340,48 @@ function calculateGraphWindowChange(graphDaily, days) {
   return Math.round(latestPoint.value - referencePoint.value);
 }
 
+function buildItemData(id, raw, graph, tradeStats) {
+  return {
+    id,
+    name: raw.item.name,
+    current: {
+      price: parsePrice(raw.item.current?.price),
+      trend: raw.item.current?.trend || 'neutral',
+    },
+    today: {
+      price: parsePrice(raw.item.today?.price),
+      trend: raw.item.today?.trend || 'neutral',
+    },
+    day30: {
+      changeValue: calculateGraphWindowChange(graph?.daily, 30),
+      changePercent: parsePercent(raw.item.day30?.change),
+    },
+    day90: {
+      changeValue: calculateGraphWindowChange(graph?.daily, 90),
+      changePercent: parsePercent(raw.item.day90?.change),
+    },
+    day180: {
+      changeValue: calculateGraphWindowChange(graph?.daily, 180),
+      changePercent: parsePercent(raw.item.day180?.change),
+    },
+    amountTraded: tradeStats.latestAmount,
+    amountTraded7dAvg: tradeStats.average7d,
+    amountTraded14dAvg: tradeStats.average14d,
+    fetchedAt: new Date().toISOString(),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Routes
+// ---------------------------------------------------------------------------
+
 app.get('/api/market/:id', validateParams(marketParamSchema), async (req, res) => {
   const itemId = req.params.id;
 
   try {
-    if (marketCollection) {
-      const cached = await marketCollection.findOne({ id: itemId });
-      if (cached && Date.now() - cached.updatedAt < 60000) {
-        return res.json(cached.data);
-      }
+    const cached = await getCachedItem(itemId);
+    if (cached) {
+      return res.json(cached);
     }
 
     const [raw, graph, tradeStats] = await Promise.all([
@@ -308,46 +389,13 @@ app.get('/api/market/:id', validateParams(marketParamSchema), async (req, res) =
       fetchRs3Graph(itemId).catch(() => null),
       fetchRs3TradeAmount(itemId).catch(() => ({ latestAmount: 0, average7d: 0, average14d: 0 })),
     ]);
+
     if (!raw || !raw.item) {
       return res.status(404).json({ error: `Item ${itemId} not found in RS3 API` });
     }
 
-    const itemData = {
-      id: itemId,
-      name: raw.item.name,
-      current: {
-        price: parsePrice(raw.item.current?.price),
-        trend: raw.item.current?.trend || 'neutral',
-      },
-      today: {
-        price: parsePrice(raw.item.today?.price),
-        trend: raw.item.today?.trend || 'neutral',
-      },
-      day30: {
-        changeValue: calculateGraphWindowChange(graph?.daily, 30),
-        changePercent: parsePercent(raw.item.day30?.change),
-      },
-      day90: {
-        changeValue: calculateGraphWindowChange(graph?.daily, 90),
-        changePercent: parsePercent(raw.item.day90?.change),
-      },
-      day180: {
-        changeValue: calculateGraphWindowChange(graph?.daily, 180),
-        changePercent: parsePercent(raw.item.day180?.change),
-      },
-      amountTraded: tradeStats.latestAmount,
-      amountTraded7dAvg: tradeStats.average7d,
-      amountTraded14dAvg: tradeStats.average14d,
-      fetchedAt: new Date().toISOString(),
-    };
-
-    if (marketCollection) {
-      await marketCollection.updateOne(
-        { id: itemId },
-        { $set: { data: itemData, updatedAt: Date.now() } },
-        { upsert: true }
-      );
-    }
+    const itemData = buildItemData(itemId, raw, graph, tradeStats);
+    await setCachedItem(itemId, itemData);
 
     return res.json(itemData);
   } catch (err) {
@@ -362,6 +410,8 @@ app.post('/api/market/batch', validateBody(marketBatchBodySchema), async (req, r
   try {
     const results = await Promise.all(
       itemIds.map(async (id) => {
+        const cached = await getCachedItem(id);
+        if (cached) return cached;
         const [r, graph, tradeStats] = await Promise.all([
           fetchRs3Item(id),
           fetchRs3Graph(id).catch(() => null),
@@ -371,34 +421,10 @@ app.post('/api/market/batch', validateBody(marketBatchBodySchema), async (req, r
           logger.warn('market batch item not found', { itemId: id });
           return null;
         }
-        return {
-          id,
-          name: r.item.name,
-          current: {
-            price: parsePrice(r.item.current?.price),
-            trend: r.item.current?.trend || 'neutral',
-          },
-          today: {
-            price: parsePrice(r.item.today?.price),
-            trend: r.item.today?.trend || 'neutral',
-          },
-          day30: {
-            changeValue: calculateGraphWindowChange(graph?.daily, 30),
-            changePercent: parsePercent(r.item.day30?.change),
-          },
-          day90: {
-            changeValue: calculateGraphWindowChange(graph?.daily, 90),
-            changePercent: parsePercent(r.item.day90?.change),
-          },
-          day180: {
-            changeValue: calculateGraphWindowChange(graph?.daily, 180),
-            changePercent: parsePercent(r.item.day180?.change),
-          },
-          amountTraded: tradeStats.latestAmount,
-          amountTraded7dAvg: tradeStats.average7d,
-          amountTraded14dAvg: tradeStats.average14d,
-          fetchedAt: new Date().toISOString(),
-        };
+
+        const itemData = buildItemData(id, r, graph, tradeStats);
+        await setCachedItem(id, itemData);
+        return itemData;
       })
     );
 
@@ -427,6 +453,6 @@ function startServer() {
 }
 
 connectDb().then(startServer).catch((err) => {
-  logger.error('could not connect DB', { error: err.message || String(err) });
+  logger.error('could not connect to DB', { error: err.message || String(err) });
   startServer();
 });

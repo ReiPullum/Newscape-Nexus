@@ -4,8 +4,7 @@ const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().positive().default(3000),
   FRONTEND_ORIGIN: z.string().default('http://localhost:4200'),
-  MONGO_URI: z.string().optional().default(''),
-  MONGO_DB: z.string().default('newscape'),
+  DATABASE_URL: z.string().optional().default(''),
   API_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(60),
   AUTH_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
   ADMIN_RATE_LIMIT_MAX: z.coerce.number().int().positive().default(20),
@@ -43,8 +42,7 @@ function loadConfig(env = process.env) {
     isProduction: parsed.NODE_ENV === 'production',
     port: parsed.PORT,
     allowedOrigins: parsed.FRONTEND_ORIGIN.split(',').map((origin) => origin.trim()).filter(Boolean),
-    mongoUri: parsed.MONGO_URI,
-    mongoDb: parsed.MONGO_DB,
+    databaseUrl: parsed.DATABASE_URL,
     rateLimits: {
       api: parsed.API_RATE_LIMIT_MAX,
       auth: parsed.AUTH_RATE_LIMIT_MAX,
@@ -98,8 +96,8 @@ function validateProductionConfig(config) {
 
   const issues = [];
 
-  if (!config.mongoUri) {
-    issues.push('MONGO_URI is required in production');
+  if (!config.databaseUrl) {
+    issues.push('DATABASE_URL is required in production');
   }
   if (config.jwt.accessSecret === 'dev-access-secret-change-me') {
     issues.push('JWT_ACCESS_SECRET must be changed in production');
