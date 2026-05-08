@@ -1,0 +1,72 @@
+<section class="market-shell">
+  <h2>Market Dashboard</h2>
+  <p>Welcome to the Bazaar of Newscape.</p>
+
+  <div class="controls">
+    <button class="refresh" (click)="refresh()" [disabled]="loading">Refresh data</button>
+
+    <div class="search-box">
+      <div class="search-input-wrapper">
+        <input
+          type="text"
+          [(ngModel)]="searchItemId"
+          (input)="onSearchInput()"
+          (keyup.enter)="searchItem()"
+          placeholder="Search by name or ID..."
+          [disabled]="loading"
+        />
+        <ul class="suggestions" *ngIf="showSuggestions && suggestions.length">
+          <li *ngFor="let suggestion of suggestions" (click)="selectSuggestion(suggestion)" class="suggestion-item">
+            <span class="suggestion-name">{{ suggestion.name }}</span>
+            <span class="suggestion-id">#{{ suggestion.id }}</span>
+          </li>
+        </ul>
+      </div>
+      <button class="search-btn" (click)="searchItem()" [disabled]="loading">Search</button>
+    </div>
+  </div>
+
+  <p *ngIf="loading" class="status">Loading...</p>
+  <p *ngIf="error" class="status error">Error: {{ error }}</p>
+
+  <div class="cards" *ngIf="!loading && items.length">
+    <article class="card" *ngFor="let item of items">
+      <h3>{{ item.name }}</h3>
+      <p>Current value: {{ item.currentPrice | number }}</p>
+
+      <div class="change-row">
+        <button class="change-toggle" type="button" (click)="toggleChangeMenu(item.id)">
+          Change window: {{ getChangeWindowLabel(item.id) }}
+        </button>
+        <div class="change-menu" *ngIf="openChangeMenuForItemId === item.id">
+          <button type="button" (click)="setChangeWindow(item.id, '1d')">1 day</button>
+          <button type="button" (click)="setChangeWindow(item.id, '30d')">1 month</button>
+          <button type="button" (click)="setChangeWindow(item.id, '90d')">3 months</button>
+          <button type="button" (click)="setChangeWindow(item.id, '180d')">6 months</button>
+        </div>
+      </div>
+
+      <p>
+        {{ getChangeWindowLabel(item.id) }} change:
+        {{ getSelectedChangeValue(item) | number }}
+        <span [ngClass]="getSelectedChangeClass(item)">{{ formatSelectedChangePercent(item) }}</span>
+      </p>
+
+      <div class="change-row">
+        <button class="change-toggle" type="button" (click)="toggleTradedMenu(item.id)">
+          Traded window: {{ getTradedWindowLabel(item.id) }}
+        </button>
+        <div class="change-menu" *ngIf="openTradedMenuForItemId === item.id">
+          <button type="button" (click)="setTradedWindow(item.id, '1d')">1 day</button>
+          <button type="button" (click)="setTradedWindow(item.id, '7d')">1 week</button>
+          <button type="button" (click)="setTradedWindow(item.id, '14d')">2 weeks</button>
+        </div>
+      </div>
+
+      <p>
+        {{ getTradedWindowLabel(item.id) }} traded avg:
+        {{ getSelectedTradedAmount(item) | number }}
+      </p>
+    </article>
+  </div>
+</section>
