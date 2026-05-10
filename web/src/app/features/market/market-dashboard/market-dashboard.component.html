@@ -1,12 +1,15 @@
 <section class="market-shell">
-  <h2>Market Dashboard</h2>
-  <p>Welcome to the Bazaar of Newscape.</p>
+  <div class="dashboard-header">
+    <div class="header-title">
+      <h2>Grand Exchange</h2>
+      <span class="header-subtitle">Live Market Tracker</span>
+    </div>
 
-  <div class="controls">
-    <button class="refresh" (click)="refresh()" [disabled]="loading">Refresh data</button>
-
-    <div class="search-box">
+    <div class="header-controls">
       <div class="search-input-wrapper">
+        <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+        </svg>
         <input
           type="text"
           [(ngModel)]="searchItemId"
@@ -23,50 +26,79 @@
         </ul>
       </div>
       <button class="search-btn" (click)="searchItem()" [disabled]="loading">Search</button>
+      <button class="refresh-btn" (click)="refresh()" [disabled]="loading">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+          <path d="M8 16H3v5"/>
+        </svg>
+        Refresh
+      </button>
     </div>
   </div>
 
-  <p *ngIf="loading" class="status">Loading...</p>
-  <p *ngIf="error" class="status error">Error: {{ error }}</p>
+  <div class="status-bar" *ngIf="loading || error">
+    <p *ngIf="loading" class="status-loading">
+      <span class="pulse-dot"></span> Fetching market data...
+    </p>
+    <p *ngIf="error" class="status-error">{{ error }}</p>
+  </div>
 
   <div class="cards" *ngIf="!loading && items.length">
     <article class="card" *ngFor="let item of items">
-      <h3>{{ item.name }}</h3>
-      <p>Current value: {{ item.currentPrice | number }}</p>
 
-      <div class="change-row">
-        <button class="change-toggle" type="button" (click)="toggleChangeMenu(item.id)">
-          Change window: {{ getChangeWindowLabel(item.id) }}
-        </button>
-        <div class="change-menu" *ngIf="openChangeMenuForItemId === item.id">
-          <button type="button" (click)="setChangeWindow(item.id, '1d')">1 day</button>
-          <button type="button" (click)="setChangeWindow(item.id, '30d')">1 month</button>
-          <button type="button" (click)="setChangeWindow(item.id, '90d')">3 months</button>
-          <button type="button" (click)="setChangeWindow(item.id, '180d')">6 months</button>
+      <div class="card-header">
+        <h3 class="item-name">{{ item.name }}</h3>
+        <span class="item-id">#{{ item.id }}</span>
+      </div>
+
+      <div class="price-block">
+        <span class="price-label">Current Price</span>
+        <span class="price-value">{{ item.currentPrice | number }}<span class="price-unit"> gp</span></span>
+      </div>
+
+      <div class="stat-block">
+        <div class="stat-label-row">
+          <span class="stat-label">Price Change</span>
+          <div class="pill-tabs">
+            <button class="pill" [class.active]="getChangeWindow(item.id) === '1d'" (click)="setChangeWindow(item.id, '1d')" type="button">1d</button>
+            <button class="pill" [class.active]="getChangeWindow(item.id) === '30d'" (click)="setChangeWindow(item.id, '30d')" type="button">30d</button>
+            <button class="pill" [class.active]="getChangeWindow(item.id) === '90d'" (click)="setChangeWindow(item.id, '90d')" type="button">90d</button>
+            <button class="pill" [class.active]="getChangeWindow(item.id) === '180d'" (click)="setChangeWindow(item.id, '180d')" type="button">180d</button>
+          </div>
+        </div>
+        <div class="stat-value-row">
+          <span class="change-value" [ngClass]="getSelectedChangeClass(item)">
+            {{ getSelectedChangeValue(item) > 0 ? '+' : '' }}{{ getSelectedChangeValue(item) | number }}
+          </span>
+          <span class="change-badge" [ngClass]="getSelectedChangeClass(item)">
+            {{ formatSelectedChangePercent(item) }}
+          </span>
         </div>
       </div>
 
-      <p>
-        {{ getChangeWindowLabel(item.id) }} change:
-        {{ getSelectedChangeValue(item) | number }}
-        <span [ngClass]="getSelectedChangeClass(item)">{{ formatSelectedChangePercent(item) }}</span>
-      </p>
+      <div class="divider"></div>
 
-      <div class="change-row">
-        <button class="change-toggle" type="button" (click)="toggleTradedMenu(item.id)">
-          Traded window: {{ getTradedWindowLabel(item.id) }}
-        </button>
-        <div class="change-menu" *ngIf="openTradedMenuForItemId === item.id">
-          <button type="button" (click)="setTradedWindow(item.id, '1d')">1 day</button>
-          <button type="button" (click)="setTradedWindow(item.id, '7d')">1 week</button>
-          <button type="button" (click)="setTradedWindow(item.id, '14d')">2 weeks</button>
+      <div class="stat-block">
+        <div class="stat-label-row">
+          <span class="stat-label">Volume Traded</span>
+          <div class="pill-tabs">
+            <button class="pill" [class.active]="getTradedWindow(item.id) === '1d'" (click)="setTradedWindow(item.id, '1d')" type="button">1d</button>
+            <button class="pill" [class.active]="getTradedWindow(item.id) === '7d'" (click)="setTradedWindow(item.id, '7d')" type="button">7d</button>
+            <button class="pill" [class.active]="getTradedWindow(item.id) === '14d'" (click)="setTradedWindow(item.id, '14d')" type="button">14d</button>
+          </div>
+        </div>
+        <div class="stat-value-row">
+          <span class="volume-value">{{ getSelectedTradedAmount(item) | number }}</span>
+          <span class="volume-unit">avg / {{ getTradedWindowLabel(item.id) }}</span>
         </div>
       </div>
 
-      <p>
-        {{ getTradedWindowLabel(item.id) }} traded avg:
-        {{ getSelectedTradedAmount(item) | number }}
-      </p>
     </article>
+  </div>
+
+  <div class="empty-state" *ngIf="!loading && !error && items.length === 0">
+    <p>No items loaded. Search for an item or refresh.</p>
   </div>
 </section>

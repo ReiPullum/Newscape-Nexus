@@ -22,9 +22,7 @@ export class MarketDashboardComponent implements OnInit {
   searchItemId = '';
   suggestions: RS3Item[] = [];
   showSuggestions = false;
-  openChangeMenuForItemId: number | null = null;
   selectedChangeWindowByItemId: Record<number, ChangeWindow> = {};
-  openTradedMenuForItemId: number | null = null;
   selectedTradedWindowByItemId: Record<number, TradedWindow> = {};
 
   private readonly defaultItemIds = [4151, 11840, 11286, 15241];
@@ -32,12 +30,10 @@ export class MarketDashboardComponent implements OnInit {
   constructor(private marketData: MarketDataService, private cdr: ChangeDetectorRef) {}
 
   ngOnInit() {
-    console.log('[Market] Component initialized, calling refresh()');
     this.refresh();
   }
 
   refresh() {
-    console.log('[Market] Refresh called with IDs:', this.defaultItemIds);
     this.error = '';
     this.loading = true;
 
@@ -49,16 +45,13 @@ export class MarketDashboardComponent implements OnInit {
     );
 
     Promise.all(calls).then((results) => {
-      console.log('[Market] All requests finished. Results:', results);
       this.items = results.filter((it): it is MarketItem => !!it);
       this.loading = false;
       this.cdr.markForCheck();
-      console.log('[Market] Loaded', this.items.length, 'items');
       if (this.items.length === 0) {
         this.error = 'Could not load any market items.';
       }
     }).catch((err) => {
-      console.error('[Market] Promise.all error:', err);
       this.loading = false;
       this.error = 'Failed to load items: ' + err?.message;
       this.cdr.markForCheck();
@@ -72,14 +65,12 @@ export class MarketDashboardComponent implements OnInit {
       return;
     }
 
-    console.log('[Market] Searching for item:', id);
     this.error = '';
     this.loading = true;
     this.showSuggestions = false;
 
     firstValueFrom(this.marketData.getItem(id))
       .then((item) => {
-        console.log('[Market] Search result:', item);
         this.items = [item];
         this.loading = false;
         this.cdr.markForCheck();
@@ -140,22 +131,16 @@ export class MarketDashboardComponent implements OnInit {
     this.showSuggestions = false;
   }
 
-  toggleChangeMenu(itemId: number) {
-    this.openChangeMenuForItemId = this.openChangeMenuForItemId === itemId ? null : itemId;
-  }
-
   setChangeWindow(itemId: number, window: ChangeWindow) {
     this.selectedChangeWindowByItemId[itemId] = window;
-    this.openChangeMenuForItemId = null;
-  }
-
-  toggleTradedMenu(itemId: number) {
-    this.openTradedMenuForItemId = this.openTradedMenuForItemId === itemId ? null : itemId;
   }
 
   setTradedWindow(itemId: number, window: TradedWindow) {
     this.selectedTradedWindowByItemId[itemId] = window;
-    this.openTradedMenuForItemId = null;
+  }
+
+  getChangeWindow(itemId: number): ChangeWindow {
+    return this.selectedChangeWindowByItemId[itemId] || "1d";
   }
 
   getTradedWindow(itemId: number): TradedWindow {
@@ -173,10 +158,6 @@ export class MarketDashboardComponent implements OnInit {
     if (window === "1d") return item.amountTraded;
     if (window === "14d") return item.amountTraded14dAvg;
     return item.amountTraded7dAvg;
-  }
-
-  getChangeWindow(itemId: number): ChangeWindow {
-    return this.selectedChangeWindowByItemId[itemId] || "1d";
   }
 
   getChangeWindowLabel(itemId: number): string {
@@ -220,18 +201,5 @@ export class MarketDashboardComponent implements OnInit {
   getSelectedChangeClass(item: MarketItem): string {
     const percent = this.getSelectedChangePercent(item);
     return percent > 0 ? "positive" : percent < 0 ? "negative" : "";
-  }
-
-  calculatePercentChange(dailyChange: number, currentPrice: number): string {
-    if (currentPrice === 0) return '0.0%';
-    const percentChange = (dailyChange / currentPrice) * 100;
-    const sign = percentChange > 0 ? '+' : '';
-    return `${sign}${percentChange.toFixed(1)}%`;
-  }
-
-  getPercentChangeClass(dailyChange: number, currentPrice: number): string {
-    if (currentPrice === 0) return '';
-    const percentChange = (dailyChange / currentPrice) * 100;
-    return percentChange > 0 ? 'positive' : percentChange < 0 ? 'negative' : '';
   }
 }
