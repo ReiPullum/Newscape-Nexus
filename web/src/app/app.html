@@ -1,40 +1,66 @@
-<style>
-  :host {
-    margin: 0;
-    padding: 0;
-    background: radial-gradient(circle at 20% 20%, #141519 0%, #080a0f 45%, #020305 100%);
-    color: #f2e6c3;
-    min-height: 100vh;
-  }
+<!-- Custom titlebar -->
+<div class="titlebar">
+  <span class="titlebar-logo">Newscape Nexus</span>
+  <div class="titlebar-controls">
+    <button class="titlebar-btn minimize" onclick="window.minimizeApp?.()">─</button>
+    <button class="titlebar-btn maximize" onclick="window.maximizeApp?.()">□</button>
+    <button class="titlebar-btn close" onclick="window.close()">✕</button>
+  </div>
+</div>
 
-  body {
-    margin: 0;
-  }
-
-  .app-shell {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-    font-family: "Cinzel", "EB Garamond", serif;
-  }
-
-  .main-content {
-    flex: 1;
-    padding: 2rem;
-    max-width: 1200px;
-    margin: 0 auto;
-  }
-</style>
-
+<!-- App layout -->
 <div class="app-shell">
-  <header style="padding: 1rem 2rem; border-bottom: 1px solid rgba(255,255,255,.1); display:flex; justify-content:space-between; align-items:center; gap:1rem; flex-wrap:wrap;">
-    <div>
-      <h1 style="font-size: 2rem; margin:0; letter-spacing: .05em;">Newscape Nexus</h1>
-      <p style="margin: .25rem 0 0; color: rgba(242,230,195,.75);">RuneScape3 market dashboard</p>
-    </div>
-  </header>
 
+  <!-- Sidebar nav -->
+  <nav class="sidebar">
+    <ul class="nav-list">
+      <li class="nav-item">
+        <a routerLink="/ge" routerLinkActive="active" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 3h18v18H3z"/><path d="M3 9h18M9 21V9"/>
+          </svg>
+          <span>GE Tracker</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a routerLink="/profile" routerLinkActive="active" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+          </svg>
+          <span>Profile Search</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a routerLink="/skills" routerLinkActive="active" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M12 2l3 7h7l-5.5 4 2 7L12 16l-6.5 4 2-7L2 9h7z"/>
+          </svg>
+          <span>Skills</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a routerLink="/items" routerLinkActive="active" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          </svg>
+          <span>Item Database</span>
+        </a>
+      </li>
+      <li class="nav-item">
+        <a routerLink="/settings" routerLinkActive="active" class="nav-link">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+          </svg>
+          <span>Settings</span>
+        </a>
+      </li>
+    </ul>
+  </nav>
+
+  <!-- Page content -->
   <main class="main-content">
     <router-outlet></router-outlet>
   </main>
+
 </div>
