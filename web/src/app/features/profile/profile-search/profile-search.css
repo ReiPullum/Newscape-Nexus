@@ -1,0 +1,145 @@
+.profile-shell {
+  font-family: 'Rajdhani', sans-serif;
+  background: linear-gradient(160deg, #0f0e17 0%, #12101c 60%, #0a0c14 100%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 1.25rem;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  padding: 2rem;
+  min-height: 100%;
+}
+
+/* ── Header ── */
+.profile-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 1.25rem;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.header-title h2 {
+  font-family: 'Cinzel', serif;
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: #c9a84c;
+  margin: 0;
+  letter-spacing: 0.06em;
+  text-shadow: 0 0 20px rgba(201, 168, 76, 0.3);
+}
+
+.header-subtitle {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #5a5470;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  display: block;
+  margin-top: 0.2rem;
+}
+
+/* ── Search ── */
+.search-container {
+  display: flex;
+  gap: 0.75rem;
+  max-width: 520px;
+}
+
+.search-input-wrapper {
+  position: relative;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  width: 15px;
+  height: 15px;
+  color: #5a5470;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e8dfc8;
+  padding: 0.6rem 0.75rem 0.6rem 2.25rem;
+  border-radius: 0.6rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.search-input::placeholder {
+  color: #3d3855;
+}
+
+.search-input:focus {
+  outline: none;
+  border-color: rgba(201, 168, 76, 0.5);
+  box-shadow: 0 0 0 3px rgba(201, 168, 76, 0.08);
+}
+
+.search-btn {
+  background: rgba(201, 168, 76, 0.12);
+  border: 1px solid rgba(201, 168, 76, 0.4);
+  color: #c9a84c;
+  padding: 0.6rem 1.25rem;
+  border-radius: 0.6rem;
+  font-family: 'Rajdhani', sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.search-btn:hover {
+  background: rgba(201, 168, 76, 0.22);
+  border-color: rgba(201, 168, 76, 0.7);
+}
+
+/* ── Empty / Coming soon states ── */
+.empty-state,
+.coming-soon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 5rem;
+  color: #3d3855;
+  text-align: center;
+}
+
+.empty-state svg,
+.coming-soon svg {
+  width: 48px;
+  height: 48px;
+  color: #2a2640;
+}
+
+.empty-state p,
+.coming-soon p {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #5a5470;
+  margin: 0;
+}
+
+.username-highlight {
+  color: #c9a84c;
+}
+
+.coming-soon-sub {
+  font-size: 0.8rem;
+  color: #3d3855;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
